@@ -3,7 +3,7 @@ import express from "express";
 
 const router = express.Router({ mergeParams: true });
 
-router.get("/", (req,res) => {
+router.get("/", (_,res) => {
 	try {
 		return res.json({ message: "It works!" });
 	} catch (error) {
