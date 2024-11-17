@@ -5,27 +5,38 @@ import { User, Reset, Invitation } from "../models/index.js";
 
 const router = express.Router();
 
+const createUser = async (username, email, password) => {
+	const user = await User.findOne({ $or: [{ username }, { email }] });
+	if (user) {
+		return true;
+	}
+
+	await new User({
+		username,
+		password,
+		email: userEmail,
+	}).save();
+
+	return false;
+}
+
 router.post("/createUser",
 	(req, res, next) => validations.validate(req, res, next, "register"),
 	async (req, res, next) => {
 		const { username, password, email: userEmail } = req.body;
 		try {
-			const user = await User.findOne({ $or: [{ username }, { email: userEmail }] });
-			if (user) {
+			const userExisted = await createUser(username, userEmail, password);
+
+			if (!userExisted) {
 				return res.json({
-					status: 409,
-					message: "Registration Error: A user with that e-mail or username already exists.",
+					success: true,
+					message: "User created successfully",
 				});
 			}
 
-			await new User({
-				username,
-				password,
-				email: userEmail,
-			}).save();
 			return res.json({
-				success: true,
-				message: "User created successfully",
+				success: false,
+				message: "Registration Error: A user with that e-mail or username already exists.",
 			});
 		} catch (error) {
 			return next(error);
@@ -47,27 +58,21 @@ router.post("/createUserInvited",
 					message: "Invalid token",
 				});
 			}
+			
+			const userExisted = await createUser(username, userEmail, password);
 
-			const user = await User.findOne({ $or: [{ username }, { email: userEmail }] });
-			if (user) {
+			if (!userExisted) {
+				await Invitation.deleteOne({ token });
 				return res.json({
-					status: 409,
-					message: "Registration Error: A user with that e-mail or username already exists.",
+					success: true,
+					message: "User created successfully",
 				});
 			}
 
-			await new User({
-				username,
-				password,
-				email: userEmail,
-			}).save();
-
 			return res.json({
-				success: true,
-				message: "User created successfully",
+				success: false,
+				message: "Registration Error: A user with that e-mail or username already exists.",
 			});
-
-			await Invitation.deleteOne({ token });
 		} catch (error) {
 			return next(error);
 		}
