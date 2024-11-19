@@ -5,24 +5,35 @@ import { User, Reset, Invitation } from "../models/index.js";
 
 const router = express.Router();
 
+const userExisted = async (username, password, email) => {
+	const user = await User.User.findOne({ $or: [{ username }, { email }] });
+
+	if (user) {
+		return true;
+	}
+
+	await new User({
+		username,
+		password,
+		email,
+	}).save();
+
+	return false;
+};
+
 router.post("/createUser",
 	(req, res, next) => validations.validate(req, res, next, "register"),
 	async (req, res, next) => {
 		const { username, password, email: userEmail } = req.body;
 		try {
-			const user = await User.findOne({ $or: [{ username }, { email: userEmail }] });
-			if (user) {
+			const existed = await userExisted(username, password, userEmail);
+			if (existed) {
 				return res.json({
 					status: 409,
 					message: "Registration Error: A user with that e-mail or username already exists.",
 				});
 			}
 
-			await new User({
-				username,
-				password,
-				email: userEmail,
-			}).save();
 			return res.json({
 				success: true,
 				message: "User created successfully",
@@ -48,26 +59,21 @@ router.post("/createUserInvited",
 				});
 			}
 
-			const user = await User.findOne({ $or: [{ username }, { email: userEmail }] });
-			if (user) {
+			
+			const existed = await userExisted(username, password, userEmail);
+			if (existed) {
 				return res.json({
 					status: 409,
 					message: "Registration Error: A user with that e-mail or username already exists.",
 				});
 			}
 
-			await new User({
-				username,
-				password,
-				email: userEmail,
-			}).save();
+			await Invitation.deleteOne({ token });
 
 			return res.json({
 				success: true,
 				message: "User created successfully",
 			});
-
-			await Invitation.deleteOne({ token });
 		} catch (error) {
 			return next(error);
 		}
